@@ -55,6 +55,8 @@ Resources:
           Environment:
             - Name: CMS_JAVA_OPTS
               Value: '-XX:+PrintFlagsFinal'
+            - Name: SYSTEM_STATUS_API_IP_ACL
+              Value: ''
             - Name: PROVIDER_ELASTICSEARCH_DNSNAMES
               Value: es-service.es-discovery
             - Name: ES_ADMIN_PASSWORD
