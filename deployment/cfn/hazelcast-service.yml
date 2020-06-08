@@ -1,0 +1,111 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This stack creates ECS cluster with hazelcast server
+Parameters:
+  Environment:
+    Type: String
+    Description: Environment Name (DEV)
+    AllowedValues: ['DEV']
+  Platform:
+    Type: String
+    Default: 'DOTCMS'
+    Description: Platform Name
+  VpcStackName:
+    Type: String
+    Description: Name of the stack which is used to create VPC and Subnets
+  RoleStackName:
+    Type: String
+    Description: Name of the stack which is used to create IAM roles
+  EcsClusterStackName:
+    Type: String
+    Description: Name of the stack which is used to create ECS cluster
+  SecurityGroupStackName:
+    Type: String
+    Description: Name of the stack which is used to create Security Group
+Resources:
+  # Private namespace for Hazelcast servers
+  HzPrivateNamespace:
+    Type: AWS::ServiceDiscovery::PrivateDnsNamespace
+    Properties:
+      Name: hz-discovery
+      Vpc:
+        Fn::ImportValue: !Join [':', [!Ref 'VpcStackName', 'VPCId']]
+  # Service discovery for Hazelcast servers
+  HzServerDiscoveryService:
+    Type: AWS::ServiceDiscovery::Service
+    Properties:
+      Description: Discovery Service for the HZ server service
+      Name: hz-server-service
+      NamespaceId: !Ref HzPrivateNamespace
+      DnsConfig:
+        RoutingPolicy: MULTIVALUE
+        DnsRecords:
+          - TTL: 60
+            Type: A
+      HealthCheckCustomConfig:
+        FailureThreshold: 1
+  # Cloud watch log group to which HZ server container send logs
+  HzServerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/ECS/hz-server'
+      RetentionInDays: 5
+  # Metadata description of what message container to run and what resource requirements it has
+  HzServerTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: HZ-SERVER-TD
+      Cpu: 512
+      Memory: 1024
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn:
+        Fn::ImportValue: !Join [':', [!Ref 'RoleStackName', 'ECSTaskExecutionRoleArn']]
+      TaskRoleArn:
+        Fn::ImportValue: !Join [':', [!Ref 'RoleStackName', 'ECSTaskRoleArn']]
+      ContainerDefinitions:
+        - Name: HZ-SERVER-CONTAINER
+          Cpu: 512
+          Memory: 1024
+          Image: 'asakchris/aws-hazelcast-hazelcast-server:1.0-SNAPSHOT'
+          PortMappings:
+            - ContainerPort: 8080
+            - ContainerPort: 8081
+            - ContainerPort: 5701
+          HealthCheck:
+            Command: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8081/actuator/health || exit 1"]
+            Interval: 60
+            Retries: 3
+            StartPeriod: 30
+            Timeout: 30
+          Environment:
+            - Name: JAVA_OPTS
+              Value: -Dspring.profiles.active=aws
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref HzServerLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+  HzServerECSService:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: HZ-SERVER-SERVICE
+      Cluster:
+        Fn::ImportValue: !Join [':', [!Ref 'EcsClusterStackName', 'EcsClusterName']]
+      LaunchType: FARGATE
+      DeploymentConfiguration:
+        MaximumPercent: 100
+        MinimumHealthyPercent: 0
+      DesiredCount: 2
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups:
+            - Fn::ImportValue: !Join [':', [!Ref 'SecurityGroupStackName', 'HzContainerSecurityGroupId']]
+          Subnets:
+            - Fn::ImportValue: !Join [':', [!Ref 'VpcStackName', 'PrivateSubnetOne']]
+            - Fn::ImportValue: !Join [':', [!Ref 'VpcStackName', 'PrivateSubnetTwo']]
+      TaskDefinition: !Ref HzServerTaskDefinition
+      ServiceRegistries:
+        - RegistryArn: !GetAtt HzServerDiscoveryService.Arn

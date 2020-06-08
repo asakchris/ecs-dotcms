@@ -1,0 +1,119 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This stack creates Elastic Search nodes
+Parameters:
+  Environment:
+    Type: String
+    Description: Environment Name (DEV)
+    AllowedValues: ['DEV']
+  Platform:
+    Type: String
+    Default: 'ES'
+    Description: Platform Name
+  VpcStackName:
+    Type: String
+    Description: Name of the stack which is used to create VPC and Subnets
+  RoleStackName:
+    Type: String
+    Description: Name of the stack which is used to create IAM roles
+  EcsClusterStackName:
+    Type: String
+    Description: Name of the stack which is used to create ECS cluster
+  SecurityGroupStackName:
+    Type: String
+    Description: Name of the stack which is used to create Security Group
+Resources:
+  # Private namespace for Elastic Search
+  EsPrivateNamespace:
+    Type: AWS::ServiceDiscovery::PrivateDnsNamespace
+    Properties:
+      Name: es-discovery
+      Vpc:
+        Fn::ImportValue: !Join [':', [!Ref 'VpcStackName', 'VPCId']]
+  # Service discovery for Elastic Search
+  EsDiscoveryService:
+    Type: AWS::ServiceDiscovery::Service
+    Properties:
+      Description: Discovery Service for the Elastic Search
+      Name: es-service
+      NamespaceId: !Ref HzPrivateNamespace
+      DnsConfig:
+        RoutingPolicy: MULTIVALUE
+        DnsRecords:
+          - TTL: 60
+            Type: A
+      HealthCheckCustomConfig:
+        FailureThreshold: 1
+  # Cloud watch log group to which Elastic Search container send logs
+  EsLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/ECS/es'
+      RetentionInDays: 5
+  # Metadata description of what message container to run and what resource requirements it has
+  EsTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: ES-TD
+      Cpu: 512
+      Memory: 1024
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn:
+        Fn::ImportValue: !Join [':', [!Ref 'RoleStackName', 'ECSTaskExecutionRoleArn']]
+      TaskRoleArn:
+        Fn::ImportValue: !Join [':', [!Ref 'RoleStackName', 'ECSTaskRoleArn']]
+      ContainerDefinitions:
+        - Name: HZ-SERVER-CONTAINER
+          Cpu: 512
+          Memory: 1024
+          Image: 'amazon/opendistro-for-elasticsearch:1.6.0'
+          PortMappings:
+            - ContainerPort: 9200
+            - ContainerPort: 9600
+          Ulimits:
+            - Name: nofile
+              SoftLimit: 65536
+              HardLimit: 65536
+            - Name: memlock
+              SoftLimit: -1
+              HardLimit: -1
+          HealthCheck:
+            Command: ["CMD-SHELL", "curl --silent --fail localhost:9200/_cluster/health?local=true&timeout=30s || exit 1"]
+            Interval: 60
+            Retries: 3
+            StartPeriod: 30
+            Timeout: 30
+          Environment:
+            - Name: discovery.seed_hosts
+              Value: es-service.es-discovery
+            - Name: cluster.name
+              Value: dotcms-cluster
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref EsLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+  EsECSService:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: ES-SERVICE
+      Cluster:
+        Fn::ImportValue: !Join [':', [!Ref 'EcsClusterStackName', 'EcsClusterName']]
+      LaunchType: FARGATE
+      DeploymentConfiguration:
+        MaximumPercent: 100
+        MinimumHealthyPercent: 0
+      DesiredCount: 2
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups:
+            - Fn::ImportValue: !Join [':', [!Ref 'SecurityGroupStackName', 'EsContainerSecurityGroupId']]
+          Subnets:
+            - Fn::ImportValue: !Join [':', [!Ref 'VpcStackName', 'PrivateSubnetOne']]
+            - Fn::ImportValue: !Join [':', [!Ref 'VpcStackName', 'PrivateSubnetTwo']]
+      TaskDefinition: !Ref EsTaskDefinition
+      ServiceRegistries:
+        - RegistryArn: !GetAtt EsDiscoveryService.Arn

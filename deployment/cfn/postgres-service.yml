@@ -1,0 +1,118 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This stack creates ECS cluster with hazelcast server
+Parameters:
+  Environment:
+    Type: String
+    Description: Environment Name (DEV)
+    AllowedValues: ['DEV']
+  Platform:
+    Type: String
+    Default: 'DOTCMS'
+    Description: Platform Name
+  VpcStackName:
+    Type: String
+    Description: Name of the stack which is used to create VPC and Subnets
+  RoleStackName:
+    Type: String
+    Description: Name of the stack which is used to create IAM roles
+  EcsClusterStackName:
+    Type: String
+    Description: Name of the stack which is used to create ECS cluster
+  SecurityGroupStackName:
+    Type: String
+    Description: Name of the stack which is used to create Security Group
+Resources:
+  # Private namespace for Database
+  DbPrivateNamespace:
+    Type: AWS::ServiceDiscovery::PrivateDnsNamespace
+    Properties:
+      Name: db-discovery
+      Vpc:
+        Fn::ImportValue: !Join [':', [!Ref 'VpcStackName', 'VPCId']]
+  # Service discovery for Database
+  DbDiscoveryService:
+    Type: AWS::ServiceDiscovery::Service
+    Properties:
+      Description: Discovery Service for the Database service
+      Name: db-service
+      NamespaceId: !Ref DbPrivateNamespace
+      DnsConfig:
+        RoutingPolicy: MULTIVALUE
+        DnsRecords:
+          - TTL: 60
+            Type: A
+      HealthCheckCustomConfig:
+        FailureThreshold: 1
+  # Cloud watch log group to which DB server container to send logs
+  DbLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/ECS/db-server'
+      RetentionInDays: 5
+  # Metadata description of what message container to run and what resource requirements it has
+  DbTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: DB-TD
+      Cpu: 512
+      Memory: 1024
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn:
+        Fn::ImportValue: !Join [':', [!Ref 'RoleStackName', 'ECSTaskExecutionRoleArn']]
+      TaskRoleArn:
+        Fn::ImportValue: !Join [':', [!Ref 'RoleStackName', 'ECSTaskRoleArn']]
+      Volumes:
+        - Name: DB-VOLUME
+      ContainerDefinitions:
+        - Name: DB-CONTAINER
+          Cpu: 512
+          Memory: 1024
+          Image: 'postgres:11'
+          PortMappings:
+            - ContainerPort: 5432
+          MountPoints:
+            - SourceVolume: DB-VOLUME
+              ContainerPath: /var/lib/postgresql/data
+          HealthCheck:
+            Command: ["CMD-SHELL", "pg_isready -U postgres"]
+            Interval: 60
+            Retries: 5
+            StartPeriod: 30
+            Timeout: 30
+          Environment:
+            - Name: POSTGRES_USER
+              Value: dotcmsdbuser
+            - Name: POSTGRES_PASSWORD
+              Value: password
+            - Name: POSTGRES_DB
+              Value: dotcms
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref DbLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+  DbECSService:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: DB-SERVICE
+      Cluster:
+        Fn::ImportValue: !Join [':', [!Ref 'EcsClusterStackName', 'EcsClusterName']]
+      LaunchType: FARGATE
+      DeploymentConfiguration:
+        MaximumPercent: 100
+        MinimumHealthyPercent: 0
+      DesiredCount: 1
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups:
+            - Fn::ImportValue: !Join [':', [!Ref 'SecurityGroupStackName', 'DbContainerSecurityGroupId']]
+          Subnets:
+            - Fn::ImportValue: !Join [':', [!Ref 'VpcStackName', 'PrivateSubnetOne']]
+            - Fn::ImportValue: !Join [':', [!Ref 'VpcStackName', 'PrivateSubnetTwo']]
+      TaskDefinition: !Ref DbTaskDefinition
+      ServiceRegistries:
+        - RegistryArn: !GetAtt DbDiscoveryService.Arn

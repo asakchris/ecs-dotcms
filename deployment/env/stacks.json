@@ -1,0 +1,65 @@
+{
+  "stacks": [
+    {
+      "groupName": "vpc",
+      "groupStacks": [
+        {
+          "stackName": "${app_environment}-${app_name}-VPC",
+          "templateFile": "${cfn_dir}/vpc.yml",
+          "paramFile": "${cfn_dir}/env/${app_environment}/Vpc.json",
+          "canBeDeleted": "No"
+        }
+      ]
+    },
+    {
+      "groupName": "securityGroupAndRole",
+      "groupStacks": [
+        {
+          "stackName": "${app_environment}-${app_name}-SECURITY-GROUP",
+          "templateFile": "${cfn_dir}/security-group.yml",
+          "paramFile": "${cfn_dir}/env/${app_environment}/SecurityGroup.json"
+        },
+        {
+          "stackName": "${app_environment}-${app_name}-ROLE",
+          "templateFile": "${cfn_dir}/role.yml",
+          "paramFile": "${cfn_dir}/env/${app_environment}/Role.json"
+        }
+      ]
+    },
+    {
+      "groupName": "albAndEcsCluster",
+      "groupStacks": [
+        {
+          "stackName": "${app_environment}-${app_name}-ALB",
+          "templateFile": "${cfn_dir}/alb.yml",
+          "paramFile": "${cfn_dir}/env/${app_environment}/Alb.json"
+        },
+        {
+          "stackName": "${app_environment}-${app_name}-ECS-CLUSTER",
+          "templateFile": "${cfn_dir}/ecs-cluster.yml",
+          "paramFile": "${cfn_dir}/env/${app_environment}/EcsCluster.json"
+        }
+      ]
+    },
+    {
+      "groupName": "dependencyEcsServices",
+      "groupStacks": [
+        {
+          "stackName": "${app_environment}-${app_name}-ECS-SERVICE-DB",
+          "templateFile": "${cfn_dir}/postgres-service.yml",
+          "paramFile": "${cfn_dir}/env/${app_environment}/DbEcsService.json"
+        },
+        {
+          "stackName": "${app_environment}-${app_name}-ECS-SERVICE-HZ",
+          "templateFile": "${cfn_dir}/hazelcast-service.yml",
+          "paramFile": "${cfn_dir}/env/${app_environment}/HzEcsService.json"
+        },
+        {
+          "stackName": "${app_environment}-${app_name}-ECS-SERVICE-ES",
+          "templateFile": "${cfn_dir}/es-service.yml",
+          "paramFile": "${cfn_dir}/env/${app_environment}/EsEcsService.json"
+        }
+      ]
+    }
+  ]
+}

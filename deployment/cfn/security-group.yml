@@ -1,0 +1,143 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This stack creates all required security groups
+Parameters:
+  Environment:
+    Type: String
+    Description: Environment Name (DEV)
+    AllowedValues: ['DEV']
+  Platform:
+    Type: String
+    Default: 'DOTCMS'
+    Description: Platform Name
+  VpcStackName:
+    Type: String
+    Description: Name of the stack which is used to create VPC and Subnets
+Resources:
+  # dotcms container security group
+  DotcmsContainerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: HZ-CONTAINER-SG
+      GroupDescription: dotcms Container Security Group
+      VpcId:
+        Fn::ImportValue: !Join [':', [!Ref 'VpcStackName', 'VPCId']]
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-${Platform}-DOTCMS-CONTAINER-SG'
+  # Hazelcast container security group
+  HzContainerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: HZ-CONTAINER-SG
+      GroupDescription: Hazelcast Server Container Security Group
+      VpcId:
+        Fn::ImportValue: !Join [':', [!Ref 'VpcStackName', 'VPCId']]
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-${Platform}-HZ-CONTAINER-SG'
+  HzContainerSecurityGroupSelfIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Ingress from other containers in the same security group on hz port
+      GroupId: !Ref 'HzContainerSecurityGroup'
+      IpProtocol: tcp
+      FromPort: 5701
+      ToPort: 5701
+      SourceSecurityGroupId: !Ref 'HzContainerSecurityGroup'
+  HzContainerSecurityGroupIngressFromDotcms:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Ingress from dotcms container
+      GroupId: !Ref 'HzContainerSecurityGroup'
+      IpProtocol: tcp
+      FromPort: 5701
+      ToPort: 5701
+      SourceSecurityGroupId: !Ref DotcmsContainerSecurityGroup
+  # DB container security group
+  DbContainerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: DB-CONTAINER-SG
+      GroupDescription: Database Container Security Group
+      VpcId:
+        Fn::ImportValue: !Join [':', [!Ref 'VpcStackName', 'VPCId']]
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-${Platform}-DB-CONTAINER-SG'
+  DbContainerSecurityGroupIngressFromDotcms:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Ingress from dotcms container
+      GroupId: !Ref 'DbContainerSecurityGroup'
+      IpProtocol: tcp
+      FromPort: 5432
+      ToPort: 5432
+      SourceSecurityGroupId: !Ref DotcmsContainerSecurityGroup
+  # Elastic Search container security group
+  EsContainerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: ES-CONTAINER-SG
+      GroupDescription: Database Container Security Group
+      VpcId:
+        Fn::ImportValue: !Join [':', [!Ref 'VpcStackName', 'VPCId']]
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-${Platform}-ES-CONTAINER-SG'
+  EsContainerSecurityGroupSelfIngress9200:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Ingress from other containers in the same security group on 9200 port
+      GroupId: !Ref 'EsContainerSecurityGroup'
+      IpProtocol: tcp
+      FromPort: 9200
+      ToPort: 9200
+      SourceSecurityGroupId: !Ref 'EsContainerSecurityGroup'
+  EsContainerSecurityGroupSelfIngress9600:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Ingress from other containers in the same security group on 9600 port
+      GroupId: !Ref 'EsContainerSecurityGroup'
+      IpProtocol: tcp
+      FromPort: 9600
+      ToPort: 9600
+      SourceSecurityGroupId: !Ref 'EsContainerSecurityGroup'
+  EsContainerSecurityGroupIngressFromDotcms9200:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Ingress from dotcms container on 9200 port
+      GroupId: !Ref 'EsContainerSecurityGroup'
+      IpProtocol: tcp
+      FromPort: 9200
+      ToPort: 9200
+      SourceSecurityGroupId: !Ref '*****'
+  EsContainerSecurityGroupIngressFromDotcms9600:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Ingress from dotcms container on 9600 port
+      GroupId: !Ref 'EsContainerSecurityGroup'
+      IpProtocol: tcp
+      FromPort: 9600
+      ToPort: 9600
+      SourceSecurityGroupId: !Ref DotcmsContainerSecurityGroup
+Outputs:
+  DotcmsContainerSecurityGroup:
+    Description: dotCMS Container Security Group Id
+    Value: !Ref 'DotcmsContainerSecurityGroup'
+    Export:
+      Name: !Join [ ':', [ !Ref 'AWS::StackName', 'DotcmsContainerSecurityGroupId' ] ]
+  HzContainerSecurityGroup:
+    Description: Hazelcast Server Container Security Group Id
+    Value: !Ref 'HzContainerSecurityGroup'
+    Export:
+      Name: !Join [ ':', [ !Ref 'AWS::StackName', 'HzContainerSecurityGroupId' ] ]
+  DbContainerSecurityGroup:
+    Description: Database Container Security Group
+    Value: !Ref 'DbContainerSecurityGroup'
+    Export:
+      Name: !Join [ ':', [ !Ref 'AWS::StackName', 'DbContainerSecurityGroupId' ] ]
+  EsContainerSecurityGroup:
+    Description: Database Container Security Group
+    Value: !Ref 'EsContainerSecurityGroup'
+    Export:
+      Name: !Join [ ':', [ !Ref 'AWS::StackName', 'EsContainerSecurityGroupId' ] ]

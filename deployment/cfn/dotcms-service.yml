@@ -1,0 +1,94 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This stack creates dotCMS
+Parameters:
+  Environment:
+    Type: String
+    Description: Environment Name (DEV)
+    AllowedValues: ['DEV']
+  Platform:
+    Type: String
+    Default: 'DOTCMS'
+    Description: Platform Name
+  VpcStackName:
+    Type: String
+    Description: Name of the stack which is used to create VPC and Subnets
+  RoleStackName:
+    Type: String
+    Description: Name of the stack which is used to create IAM roles
+  EcsClusterStackName:
+    Type: String
+    Description: Name of the stack which is used to create ECS cluster
+  SecurityGroupStackName:
+    Type: String
+    Description: Name of the stack which is used to create Security Group
+  AlbStackName:
+    Type: String
+    Description: Name of the stack which is used to create ALB
+Resources:
+  # Cloud watch log group to which dotcms container to send logs
+  DotCmsLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/ECS/dotcms'
+      RetentionInDays: 5
+  # Metadata description of what message container to run and what resource requirements it has
+  DotCmsTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: DOT-CMS-TD
+      Cpu: 512
+      Memory: 1024
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn:
+        Fn::ImportValue: !Join [':', [!Ref 'RoleStackName', 'ECSTaskExecutionRoleArn']]
+      TaskRoleArn:
+        Fn::ImportValue: !Join [':', [!Ref 'RoleStackName', 'ECSTaskRoleArn']]
+      ContainerDefinitions:
+        - Name: DOT-CMS-CONTAINER
+          Cpu: 512
+          Memory: 1024
+          Image: 'dotcms/dotcms:latest'
+          PortMappings:
+            - ContainerPort: 8081
+          Environment:
+            - Name: CMS_JAVA_OPTS
+              Value: '-XX:+PrintFlagsFinal'
+            - Name: PROVIDER_ELASTICSEARCH_DNSNAMES
+              Value: es-service.es-discovery
+            - Name: ES_ADMIN_PASSWORD
+              Value: admin
+            - Name: PROVIDER_DB_DNSNAME
+              Value: db-service.db-discovery
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref DotCmsLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+  DotCmsECSService:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: DOT-CMS-SERVICE
+      Cluster:
+        Fn::ImportValue: !Join [':', [!Ref 'EcsClusterStackName', 'EcsClusterName']]
+      LaunchType: FARGATE
+      DeploymentConfiguration:
+        MaximumPercent: 100
+        MinimumHealthyPercent: 0
+      DesiredCount: 2
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups:
+            - Fn::ImportValue: !Join [':', [!Ref 'SecurityGroupStackName', 'DotcmsContainerSecurityGroupId']]
+          Subnets:
+            - Fn::ImportValue: !Join [':', [!Ref 'VpcStackName', 'PrivateSubnetOne']]
+            - Fn::ImportValue: !Join [':', [!Ref 'VpcStackName', 'PrivateSubnetTwo']]
+      TaskDefinition: !Ref DotCmsTaskDefinition
+      LoadBalancers:
+        - ContainerName: DOT-CMS-CONTAINER
+          ContainerPort: 8081
+          TargetGroupArn:
+            Fn::ImportValue: !Join [':', [!Ref 'AlbStackName', 'AppTargetGroupArn']]
