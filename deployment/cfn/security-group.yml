@@ -110,7 +110,7 @@ Resources:
       IpProtocol: tcp
       FromPort: 9200
       ToPort: 9200
-      SourceSecurityGroupId: !Ref '*****'
+      SourceSecurityGroupId: !Ref DotcmsContainerSecurityGroup
   EsContainerSecurityGroupIngressFromDotcms9600:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
