@@ -54,8 +54,8 @@ Resources:
     Type: AWS::ECS::TaskDefinition
     Properties:
       Family: ES-TD
-      Cpu: 512
-      Memory: 1024
+      Cpu: 1024
+      Memory: 2048
       NetworkMode: awsvpc
       RequiresCompatibilities:
         - FARGATE
@@ -63,14 +63,19 @@ Resources:
         Fn::ImportValue: !Join [':', [!Ref 'RoleStackName', 'ECSTaskExecutionRoleArn']]
       TaskRoleArn:
         Fn::ImportValue: !Join [':', [!Ref 'RoleStackName', 'ECSTaskRoleArn']]
+      Volumes:
+        - Name: ES-VOLUME
       ContainerDefinitions:
         - Name: HZ-SERVER-CONTAINER
-          Cpu: 512
-          Memory: 1024
+          Cpu: 1024
+          Memory: 2048
           Image: 'amazon/opendistro-for-elasticsearch:1.6.0'
           PortMappings:
             - ContainerPort: 9200
             - ContainerPort: 9600
+          MountPoints:
+            - SourceVolume: ES-VOLUME
+              ContainerPath: /usr/share/elasticsearch/data
           Ulimits:
             - Name: nofile
               SoftLimit: 65536
@@ -89,6 +94,8 @@ Resources:
               Value: es-service.es-discovery
             - Name: cluster.name
               Value: dotcms-cluster
+            - Name: ES_JAVA_OPTS
+              Value: '-Xmx1G '
           LogConfiguration:
             LogDriver: awslogs
             Options:
