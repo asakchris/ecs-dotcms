@@ -96,6 +96,8 @@ Resources:
               Value: dotcms-cluster
             - Name: ES_JAVA_OPTS
               Value: '-Xmx1G '
+            - Name: node.store.allow_mmap
+              Value: false
           LogConfiguration:
             LogDriver: awslogs
             Options:
