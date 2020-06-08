@@ -94,6 +94,6 @@ Outputs:
       Name: !Join [ ':', [ !Ref 'AWS::StackName', 'AlbUrl' ] ]
   AppTargetGroup:
     Description: Dotcms application Services target group ARN
-    Value: !Ref 'ReadTargetGroup'
+    Value: !Ref 'AppTargetGroup'
     Export:
       Name: !Join [ ':', [ !Ref 'AWS::StackName', 'AppTargetGroupArn' ] ]
