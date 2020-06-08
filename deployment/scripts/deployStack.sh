@@ -20,7 +20,7 @@ validate_active_flag() {
 
 # This function sets up all required variables
 setup_env() {
-    export app_name='HAZELCAST'
+    export app_name='DOTCMS'
     export app_environment=$1
     export image_version=$2
     export is_active=$3

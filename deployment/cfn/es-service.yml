@@ -7,7 +7,7 @@ Parameters:
     AllowedValues: ['DEV']
   Platform:
     Type: String
-    Default: 'ES'
+    Default: 'DOTCMS'
     Description: Platform Name
   VpcStackName:
     Type: String
