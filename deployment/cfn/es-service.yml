@@ -66,7 +66,7 @@ Resources:
       Volumes:
         - Name: ES-VOLUME
       ContainerDefinitions:
-        - Name: HZ-SERVER-CONTAINER
+        - Name: ES-CONTAINER
           Cpu: 1024
           Memory: 2048
           Image: 'amazon/opendistro-for-elasticsearch:1.6.0'
