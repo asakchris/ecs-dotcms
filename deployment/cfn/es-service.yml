@@ -98,6 +98,8 @@ Resources:
               Value: '-Xmx1G '
             - Name: node.store.allow_mmap
               Value: false
+            - Name: xpack.security.http.ssl.enabled
+              Value: false
           LogConfiguration:
             LogDriver: awslogs
             Options:
