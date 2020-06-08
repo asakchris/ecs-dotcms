@@ -36,8 +36,8 @@ Resources:
     Type: AWS::ECS::TaskDefinition
     Properties:
       Family: DOT-CMS-TD
-      Cpu: 512
-      Memory: 1024
+      Cpu: 1024
+      Memory: 2048
       NetworkMode: awsvpc
       RequiresCompatibilities:
         - FARGATE
@@ -47,20 +47,22 @@ Resources:
         Fn::ImportValue: !Join [':', [!Ref 'RoleStackName', 'ECSTaskRoleArn']]
       ContainerDefinitions:
         - Name: DOT-CMS-CONTAINER
-          Cpu: 512
-          Memory: 1024
+          Cpu: 1024
+          Memory: 2048
           Image: 'dotcms/dotcms:latest'
           PortMappings:
             - ContainerPort: 8081
           Environment:
+            - Name: CMS_HEAP_SIZE
+              Value: '1g'
             - Name: CMS_JAVA_OPTS
               Value: '-XX:+PrintFlagsFinal'
             - Name: SYSTEM_STATUS_API_IP_ACL
               Value: ''
             - Name: PROVIDER_ELASTICSEARCH_DNSNAMES
-              Value: es-service.es-discovery
-            - Name: ES_ADMIN_PASSWORD
-              Value: admin
+              Value: vpc-org-dotcms-es-mwbj7q4cxearzylhcthfs5sfl4.us-east-1.es.amazonaws.com
+            #- Name: ES_ADMIN_PASSWORD
+            #  Value: admin
             - Name: PROVIDER_DB_DNSNAME
               Value: db-service.db-discovery
           LogConfiguration:
@@ -79,7 +81,7 @@ Resources:
       DeploymentConfiguration:
         MaximumPercent: 100
         MinimumHealthyPercent: 0
-      DesiredCount: 2
+      DesiredCount: 1
       NetworkConfiguration:
         AwsvpcConfiguration:
           AssignPublicIp: DISABLED

@@ -53,11 +53,16 @@
           "stackName": "${app_environment}-${app_name}-ECS-SERVICE-HZ",
           "templateFile": "${cfn_dir}/hazelcast-service.yml",
           "paramFile": "${cfn_dir}/env/${app_environment}/HzEcsService.json"
-        },
+        }
+      ]
+    },
+    {
+      "groupName": "dotcmsEcsService",
+      "groupStacks": [
         {
-          "stackName": "${app_environment}-${app_name}-ECS-SERVICE-ES",
-          "templateFile": "${cfn_dir}/es-service.yml",
-          "paramFile": "${cfn_dir}/env/${app_environment}/EsEcsService.json"
+          "stackName": "${app_environment}-${app_name}-ECS-SERVICE-DOTCMS",
+          "templateFile": "${cfn_dir}/dotcms-service.yml",
+          "paramFile": "${cfn_dir}/env/${app_environment}/DotcmsEcsService.json"
         }
       ]
     }
