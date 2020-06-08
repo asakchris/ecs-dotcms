@@ -69,8 +69,8 @@ Resources:
             #  Value: vpc-org-dotcms-es-mwbj7q4cxearzylhcthfs5sfl4.us-east-1.es.amazonaws.com
             #- Name: ES_ADMIN_PASSWORD
             #  Value: admin
-            #- Name: PROVIDER_DB_DNSNAME
-            #  Value: db-service.db-discovery
+            - Name: PROVIDER_DB_DNSNAME
+              Value: db-service.db-discovery
           LogConfiguration:
             LogDriver: awslogs
             Options:
