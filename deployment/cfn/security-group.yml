@@ -13,6 +13,28 @@ Parameters:
     Type: String
     Description: Name of the stack which is used to create VPC and Subnets
 Resources:
+  # dotCMS ALB security group
+  DotcmsLoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: DOTCMS-ALB-SG
+      GroupDescription: Access to the public facing load balancer
+      VpcId:
+        Fn::ImportValue: !Join [':', [!Ref 'VpcStackName', 'VPCId']]
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: '0.0.0.0/0'
+          Description: Allow IPV4 HTTP
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIpv6: '::/0'
+          Description: Allow IPV6 HTTP
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-${Platform}-ALB-SG'
   # dotcms container security group
   DotcmsContainerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -24,6 +46,13 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub '${Environment}-${Platform}-DOTCMS-CONTAINER-SG'
+  DotcmsContainerSecurityGroupIngressFromPublicALB:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Ingress from the public ALB
+      GroupId: !Ref 'DotcmsContainerSecurityGroup'
+      IpProtocol: -1
+      SourceSecurityGroupId: !Ref 'DotcmsLoadBalancerSecurityGroup'
   # Hazelcast container security group
   HzContainerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -141,3 +170,8 @@ Outputs:
     Value: !Ref 'EsContainerSecurityGroup'
     Export:
       Name: !Join [ ':', [ !Ref 'AWS::StackName', 'EsContainerSecurityGroupId' ] ]
+  DotcmsLoadBalancerSecurityGroup:
+    Description: dotCMS Container Security Group Id
+    Value: !Ref 'DotcmsLoadBalancerSecurityGroup'
+    Export:
+      Name: !Join [ ':', [ !Ref 'AWS::StackName', 'DotcmsLoadBalancerSecurityGroupId' ] ]
