@@ -17,7 +17,7 @@ Resources:
   DotcmsContainerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupName: HZ-CONTAINER-SG
+      GroupName: DOTCMS-CONTAINER-SG
       GroupDescription: dotcms Container Security Group
       VpcId:
         Fn::ImportValue: !Join [':', [!Ref 'VpcStackName', 'VPCId']]
