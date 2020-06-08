@@ -68,7 +68,7 @@ Resources:
       HealthCheckIntervalSeconds: 30
       HealthCheckPath: /api/v1/system-status/
       HealthCheckProtocol: HTTP
-      HealthCheckTimeoutSeconds: 30
+      HealthCheckTimeoutSeconds: 25
       HealthyThresholdCount: 2
       Port: 8081
       Protocol: HTTP
