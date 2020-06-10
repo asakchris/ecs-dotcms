@@ -149,6 +149,34 @@ Resources:
       FromPort: 9600
       ToPort: 9600
       SourceSecurityGroupId: !Ref DotcmsContainerSecurityGroup
+  EsContainerSecurityGroupIngressFromDotcms443:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Ingress from dotcms container on 9600 port
+      GroupId: !Ref 'EsContainerSecurityGroup'
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      SourceSecurityGroupId: !Ref DotcmsContainerSecurityGroup
+  # Security Group for an Amazon EFS File System
+  EfsSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Access to EFS
+      VpcId:
+        Fn::ImportValue: !Join [':', [!Ref 'VpcStackName', 'VPCId']]
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-${Platform}-EFS-SG'
+  EfsSecurityGroupIngressFromContainer:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Ingress from dotCMS Container
+      GroupId: !Ref 'EfsSecurityGroup'
+      IpProtocol: tcp
+      FromPort: 2049
+      ToPort: 2049
+      SourceSecurityGroupId: !Ref 'DotcmsContainerSecurityGroup'
 Outputs:
   DotcmsContainerSecurityGroup:
     Description: dotCMS Container Security Group Id
@@ -175,3 +203,8 @@ Outputs:
     Value: !Ref 'DotcmsLoadBalancerSecurityGroup'
     Export:
       Name: !Join [ ':', [ !Ref 'AWS::StackName', 'DotcmsLoadBalancerSecurityGroupId' ] ]
+  EfsSecurityGroup:
+    Description: EFS Security Group Id
+    Value: !Ref 'EfsSecurityGroup'
+    Export:
+      Name: !Join [ ':', [ !Ref 'AWS::StackName', 'EfsSecurityGroupId' ] ]

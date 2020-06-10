@@ -27,12 +27,17 @@
       ]
     },
     {
-      "groupName": "albAndEcsCluster",
+      "groupName": "albEfsAndEcsCluster",
       "groupStacks": [
         {
           "stackName": "${app_environment}-${app_name}-ALB",
           "templateFile": "${cfn_dir}/alb.yml",
           "paramFile": "${cfn_dir}/env/${app_environment}/Alb.json"
+        },
+        {
+          "stackName": "${app_environment}-${app_name}-EFS",
+          "templateFile": "${cfn_dir}/efs.yml",
+          "paramFile": "${cfn_dir}/env/${app_environment}/Efs.json"
         },
         {
           "stackName": "${app_environment}-${app_name}-ECS-CLUSTER",
